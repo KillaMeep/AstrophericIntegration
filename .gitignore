@@ -32,5 +32,8 @@ lovelace-astrospheric-cards/dist/
 # Dev notes
 idea.md
 
+# Local validation
+validate.ps1
+
 # Logs
 *.log

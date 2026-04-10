@@ -1,19 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
-  <rect width="256" height="256" rx="32" fill="#0B1026"/>
-  <circle cx="128" cy="128" r="80" fill="none" stroke="#FFD54F" stroke-width="2" opacity="0.3"/>
-  <circle cx="128" cy="128" r="55" fill="none" stroke="#FFD54F" stroke-width="2" opacity="0.2"/>
-  <circle cx="128" cy="128" r="30" fill="none" stroke="#FFD54F" stroke-width="2" opacity="0.1"/>
-  <!-- Stars -->
-  <circle cx="80" cy="60" r="2" fill="#E8E6E3"/>
-  <circle cx="180" cy="50" r="1.5" fill="#E8E6E3" opacity="0.8"/>
-  <circle cx="200" cy="100" r="2.5" fill="#E8E6E3"/>
-  <circle cx="60" cy="180" r="1.5" fill="#E8E6E3" opacity="0.7"/>
-  <circle cx="170" cy="200" r="2" fill="#E8E6E3" opacity="0.9"/>
-  <circle cx="50" cy="110" r="1" fill="#E8E6E3" opacity="0.6"/>
-  <circle cx="210" cy="170" r="1.5" fill="#E8E6E3" opacity="0.8"/>
-  <!-- Telescope -->
-  <line x1="110" y1="180" x2="150" y2="90" stroke="#FFD54F" stroke-width="4" stroke-linecap="round"/>
-  <line x1="120" y1="195" x2="110" y2="180" stroke="#FFD54F" stroke-width="3" stroke-linecap="round"/>
-  <line x1="145" y1="195" x2="110" y2="180" stroke="#FFD54F" stroke-width="3" stroke-linecap="round"/>
-  <ellipse cx="155" cy="85" rx="12" ry="8" transform="rotate(-60 155 85)" fill="none" stroke="#FFD54F" stroke-width="3"/>
+  <!-- Night sky background circle -->
+  <circle cx="128" cy="128" r="120" fill="#0F1B3D"/>
+  <!-- Telescope body - angled tube -->
+  <path d="M88 192 L152 72 L168 80 L104 200 Z" fill="#C0C8E0"/>
+  <!-- Telescope lens hood -->
+  <path d="M148 80 L156 60 L176 68 L168 88 Z" fill="#8090B8"/>
+  <!-- Telescope eyepiece -->
+  <ellipse cx="96" cy="196" rx="12" ry="6" fill="#8090B8"/>
+  <!-- Tripod legs -->
+  <path d="M96 192 L68 232 L76 236 L100 198" fill="#6070A0"/>
+  <path d="M100 196 L120 236 L128 232 L104 196" fill="#6070A0"/>
+  <!-- Star - large, 4-point -->
+  <path d="M192 56 L196 44 L200 56 L212 60 L200 64 L196 76 L192 64 L180 60 Z" fill="#FFD54F"/>
+  <!-- Star - medium -->
+  <path d="M56 72 L58.5 64 L61 72 L69 74.5 L61 77 L58.5 85 L56 77 L48 74.5 Z" fill="#FFD54F"/>
+  <!-- Star - small dot -->
+  <circle cx="172" cy="120" r="3" fill="#E8E6E3"/>
+  <circle cx="56" cy="144" r="2.5" fill="#E8E6E3" opacity="0.8"/>
+  <circle cx="200" cy="160" r="2" fill="#E8E6E3" opacity="0.7"/>
 </svg>

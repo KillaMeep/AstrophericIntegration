@@ -13,7 +13,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import AstrosphericApiClient, AstrosphericApiError, AstrosphericAuthError
-from .const import DOMAIN, LOGGER, UPDATE_INTERVAL_FORECAST
+from .const import CREDIT_GUARD_THRESHOLD, DOMAIN, LOGGER, UPDATE_INTERVAL_FORECAST
 
 STORAGE_VERSION = 1
 STORAGE_KEY_PREFIX = "astrospheric_forecast"
