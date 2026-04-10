@@ -18,6 +18,10 @@ class AstrosphericAuthError(AstrosphericApiError):
     """Raised when the API key is invalid or unauthorized."""
 
 
+class AstrosphericCreditsExhaustedError(AstrosphericApiError):
+    """Raised when the daily API credit limit has been reached."""
+
+
 class AstrosphericLocationError(AstrosphericApiError):
     """Raised when the location is outside the RDPS model domain."""
 
@@ -72,9 +76,13 @@ class AstrosphericApiClient:
         """Make a test forecast call to validate the API key and location.
 
         Returns True if valid. Raises specific exceptions on known failures.
+        Credits exhausted is treated as valid (key works, just rate limited).
         """
         try:
             await self.get_forecast()
+        except AstrosphericCreditsExhaustedError:
+            # Key is valid, just out of credits — that's OK for validation
+            return True
         except AstrosphericAuthError:
             raise
         except AstrosphericLocationError:
@@ -101,6 +109,12 @@ class AstrosphericApiClient:
                     body = await resp.text()
 
                     if resp.status == 403:
+                        # Distinguish "credits exhausted" from "invalid key"
+                        body_lower = body.lower()
+                        if "call count" in body_lower or "limit" in body_lower:
+                            raise AstrosphericCreditsExhaustedError(
+                                f"Daily API credit limit reached: {body}"
+                            )
                         raise AstrosphericAuthError(
                             f"Invalid API key or unauthorized: {body}"
                         )

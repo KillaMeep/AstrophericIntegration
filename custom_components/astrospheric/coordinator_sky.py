@@ -11,7 +11,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AstrosphericApiClient, AstrosphericApiError, AstrosphericAuthError
+from .api import (
+    AstrosphericApiClient,
+    AstrosphericApiError,
+    AstrosphericAuthError,
+    AstrosphericCreditsExhaustedError,
+)
 from .const import CREDIT_GUARD_THRESHOLD, DEFAULT_SKY_POLL_MINUTES, DOMAIN, LOGGER
 
 
@@ -48,10 +53,8 @@ class SkyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Check credit guard
         credit_guard = self.hass.data.get(DOMAIN, {}).get("credit_guard_active", False)
         if credit_guard:
-            LOGGER.warning("Credit guard active — skipping sky poll")
-            if self.data:
-                return self.data
-            raise UpdateFailed("Credit guard active and no cached data")
+            LOGGER.debug("Credit guard active — skipping sky poll")
+            return self.data if self.data else {}
 
         timestamp_ms = int(time.time() * 1000)
 
@@ -59,6 +62,13 @@ class SkyCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             data = await self.client.get_sky(timestamp_ms)
         except AstrosphericAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
+        except AstrosphericCreditsExhaustedError:
+            LOGGER.warning("API credits exhausted — activating credit guard")
+            self.hass.data.setdefault(DOMAIN, {})
+            self.hass.data[DOMAIN]["credit_guard_active"] = True
+            if self.data:
+                return self.data
+            return {}
         except AstrosphericApiError as err:
             raise UpdateFailed(str(err)) from err
 

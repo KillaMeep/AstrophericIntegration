@@ -12,7 +12,12 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .api import AstrosphericApiClient, AstrosphericApiError, AstrosphericAuthError
+from .api import (
+    AstrosphericApiClient,
+    AstrosphericApiError,
+    AstrosphericAuthError,
+    AstrosphericCreditsExhaustedError,
+)
 from .const import CREDIT_GUARD_THRESHOLD, DOMAIN, LOGGER, UPDATE_INTERVAL_FORECAST
 
 STORAGE_VERSION = 1
@@ -77,15 +82,20 @@ class ForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         # Check credit guard
         credit_guard = self.hass.data.get(DOMAIN, {}).get("credit_guard_active", False)
         if credit_guard:
-            LOGGER.warning("Credit guard active — skipping forecast poll")
-            if self.data:
-                return self.data
-            raise UpdateFailed("Credit guard active and no cached data")
+            LOGGER.debug("Credit guard active — skipping forecast poll")
+            return self.data if self.data else {}
 
         try:
             data = await self.client.get_forecast()
         except AstrosphericAuthError as err:
             raise ConfigEntryAuthFailed(str(err)) from err
+        except AstrosphericCreditsExhaustedError:
+            LOGGER.warning("API credits exhausted — activating credit guard")
+            self.hass.data.setdefault(DOMAIN, {})
+            self.hass.data[DOMAIN]["credit_guard_active"] = True
+            if self.data:
+                return self.data
+            return {}
         except AstrosphericApiError as err:
             raise UpdateFailed(str(err)) from err
 

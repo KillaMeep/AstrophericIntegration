@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -22,6 +23,9 @@ from .const import (
 )
 from .coordinator_forecast import ForecastCoordinator
 from .coordinator_sky import SkyCoordinator
+
+CARDS_JS = "astrospheric-cards.js"
+CARDS_URL = f"/astrospheric/{CARDS_JS}"
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -70,12 +74,39 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Forward setup to sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    # Register bundled Lovelace card JS
+    _register_cards(hass)
+
     return True
 
 
 async def _async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle options update — reload the integration."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+def _register_cards(hass: HomeAssistant) -> None:
+    """Register the bundled Lovelace card JS as a static resource."""
+    # Only register once (multiple config entries should not re-register)
+    if hass.data[DOMAIN].get("cards_registered"):
+        return
+
+    www_dir = Path(__file__).parent / "www"
+    js_path = www_dir / CARDS_JS
+    if not js_path.is_file():
+        LOGGER.warning("Lovelace card JS not found at %s — skipping registration", js_path)
+        return
+
+    # Serve the JS file at /astrospheric/astrospheric-cards.js
+    hass.http.register_static_path(CARDS_URL, str(js_path), cache_headers=False)
+
+    hass.data[DOMAIN]["cards_registered"] = True
+    LOGGER.info(
+        "Registered Lovelace cards at %s — add as a resource in your dashboard: "
+        "URL: %s, Type: JavaScript Module",
+        CARDS_URL,
+        CARDS_URL,
+    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
