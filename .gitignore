@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node.js
+node_modules/
+
+# Home Assistant
+.homeassistant/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor settings
+.vscode/
+
+# Copilot skills (local dev only)
+.copilot/
+
+# Build output (built by CI)
+lovelace-astrospheric-cards/dist/
+
+# Dev notes
+idea.md
+
+# Logs
+*.log

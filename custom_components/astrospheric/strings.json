@@ -1,0 +1,65 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Astrospheric Setup",
+        "description": "Enter your Astrospheric API key and location. The location defaults to your Home Assistant configured coordinates.",
+        "data": {
+          "api_key": "API Key",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "sky_poll_interval": "Sky poll interval (minutes)"
+        },
+        "data_description": {
+          "api_key": "Your Astrospheric Professional API key",
+          "latitude": "Latitude of your observing location",
+          "longitude": "Longitude of your observing location",
+          "sky_poll_interval": "How often to poll celestial positions (5-60 minutes, default 20)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid API key. Please check your Astrospheric Professional subscription.",
+      "location_error": "Location is outside the RDPS model domain (North America only).",
+      "cannot_connect": "Unable to connect to the Astrospheric API. Please try again.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This location is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Astrospheric Options",
+        "data": {
+          "sky_poll_interval": "Sky poll interval (minutes)"
+        },
+        "data_description": {
+          "sky_poll_interval": "How often to poll celestial object positions (5-60 minutes)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "cloud_cover": { "name": "Cloud Cover" },
+      "seeing": { "name": "Seeing" },
+      "transparency": { "name": "Transparency" },
+      "temperature": { "name": "Temperature" },
+      "dew_point": { "name": "Dew Point" },
+      "wind_speed": { "name": "Wind Speed" },
+      "wind_direction": { "name": "Wind Direction" },
+      "model_run": { "name": "Model Run" },
+      "moon_phase": { "name": "Moon Phase" },
+      "moon_illumination": { "name": "Moon Illumination" },
+      "moon_altitude": { "name": "Moon Altitude" },
+      "moon_azimuth": { "name": "Moon Azimuth" },
+      "sun_altitude": { "name": "Sun Altitude" },
+      "sun_azimuth": { "name": "Sun Azimuth" },
+      "visible_planets": { "name": "Visible Planets" },
+      "credits_used_today": { "name": "Credits Used Today" },
+      "credits_remaining": { "name": "Credits Remaining" }
+    }
+  }
+}
