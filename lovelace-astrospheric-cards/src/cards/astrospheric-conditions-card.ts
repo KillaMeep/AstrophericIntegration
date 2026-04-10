@@ -30,6 +30,19 @@ class AstrosphericConditionsCard extends LitElement {
     return 4;
   }
 
+  static getStubConfig(): Record<string, unknown> {
+    return {
+      type: "custom:astrospheric-conditions-card",
+      cloud_cover_entity: "",
+      seeing_entity: "",
+      transparency_entity: "",
+      temperature_entity: "",
+      dew_point_entity: "",
+      wind_speed_entity: "",
+      wind_direction_entity: "",
+    };
+  }
+
   static getConfigElement() {
     return document.createElement("astrospheric-conditions-editor");
   }

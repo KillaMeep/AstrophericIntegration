@@ -26,6 +26,15 @@ class AstrosphericForecastCard extends LitElement {
     return 5;
   }
 
+  static getStubConfig(): Record<string, unknown> {
+    return {
+      type: "custom:astrospheric-forecast-card",
+      cloud_cover_entity: "",
+      seeing_entity: "",
+      transparency_entity: "",
+    };
+  }
+
   disconnectedCallback(): void {
     super.disconnectedCallback();
     this._chart?.destroy();

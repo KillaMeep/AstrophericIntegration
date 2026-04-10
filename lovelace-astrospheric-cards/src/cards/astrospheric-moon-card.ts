@@ -16,6 +16,16 @@ class AstrosphericMoonCard extends LitElement {
     return 4;
   }
 
+  static getStubConfig(): Record<string, unknown> {
+    return {
+      type: "custom:astrospheric-moon-card",
+      moon_phase_entity: "",
+      moon_illumination_entity: "",
+      moon_altitude_entity: "",
+      moon_azimuth_entity: "",
+    };
+  }
+
   static getConfigElement() {
     return document.createElement("astrospheric-moon-editor");
   }

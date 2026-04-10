@@ -18,6 +18,17 @@ class AstrosphericSkyMapCard extends LitElement {
     return 6;
   }
 
+  static getStubConfig(): Record<string, unknown> {
+    return {
+      type: "custom:astrospheric-sky-map-card",
+      sun_altitude_entity: "",
+      sun_azimuth_entity: "",
+      moon_altitude_entity: "",
+      moon_azimuth_entity: "",
+      visible_planets_entity: "",
+    };
+  }
+
   private _getState(entityId?: string): string | undefined {
     if (!entityId || !this.hass) return undefined;
     return this.hass.states[entityId]?.state;

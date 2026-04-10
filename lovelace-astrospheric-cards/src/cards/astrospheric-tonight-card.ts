@@ -49,6 +49,20 @@ class AstrosphericTonightCard extends LitElement {
     return 3;
   }
 
+  static getStubConfig(): Record<string, unknown> {
+    return {
+      type: "custom:astrospheric-tonight-card",
+      seeing_entity: "",
+      transparency_entity: "",
+      cloud_cover_entity: "",
+      seeing_go_threshold: 4,
+      transparency_go_threshold: 9,
+      cloud_go_threshold: 20,
+      seeing_nogo_threshold: 2,
+      cloud_nogo_threshold: 70,
+    };
+  }
+
   private _getState(entityId?: string): string | undefined {
     if (!entityId || !this.hass) return undefined;
     return this.hass.states[entityId]?.state;

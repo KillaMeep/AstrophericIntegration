@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -75,7 +76,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Register bundled Lovelace card JS
-    _register_cards(hass)
+    await _async_register_cards(hass)
 
     return True
 
@@ -85,7 +86,7 @@ async def _async_update_options(hass: HomeAssistant, entry: ConfigEntry) -> None
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-def _register_cards(hass: HomeAssistant) -> None:
+async def _async_register_cards(hass: HomeAssistant) -> None:
     """Register the bundled Lovelace card JS as a static resource."""
     # Only register once (multiple config entries should not re-register)
     if hass.data[DOMAIN].get("cards_registered"):
@@ -98,7 +99,9 @@ def _register_cards(hass: HomeAssistant) -> None:
         return
 
     # Serve the JS file at /astrospheric/astrospheric-cards.js
-    hass.http.register_static_path(CARDS_URL, str(js_path), cache_headers=False)
+    await hass.http.async_register_static_paths(
+        [StaticPathConfig(CARDS_URL, str(js_path), False)]
+    )
 
     hass.data[DOMAIN]["cards_registered"] = True
     LOGGER.info(
