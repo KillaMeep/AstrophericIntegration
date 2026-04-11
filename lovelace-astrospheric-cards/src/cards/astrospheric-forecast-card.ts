@@ -31,6 +31,18 @@ class AstrosphericForecastCard extends LitElement {
     this._resizeObs?.disconnect();
   }
 
+  private _findEntity(sensorType: string): string | undefined {
+    if (!this.hass) return undefined;
+    for (const [id, s] of Object.entries(this.hass.states)) {
+      if ((s.attributes as Record<string, unknown>).astrospheric_sensor_type === sensorType) return id;
+    }
+    return undefined;
+  }
+
+  private _entity(cfgKey: string | undefined, sensorType: string): string | undefined {
+    return (cfgKey && cfgKey.length > 0 ? cfgKey : undefined) ?? this._findEntity(sensorType);
+  }
+
   private _getForecastData(entityId?: string): ForecastPoint[] {
     if (!entityId || !this.hass) return [];
     const entity = this.hass.states[entityId];
@@ -71,9 +83,9 @@ class AstrosphericForecastCard extends LitElement {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    const cloudData = this._getForecastData(this._config.cloud_cover_entity);
-    const seeingData = this._getForecastData(this._config.seeing_entity);
-    const transData = this._getForecastData(this._config.transparency_entity);
+    const cloudData = this._getForecastData(this._entity(this._config.cloud_cover_entity, "cloud_cover"));
+    const seeingData = this._getForecastData(this._entity(this._config.seeing_entity, "seeing"));
+    const transData = this._getForecastData(this._entity(this._config.transparency_entity, "transparency"));
 
     const primary = cloudData.length > 0 ? cloudData : seeingData.length > 0 ? seeingData : transData;
     if (primary.length === 0) {
@@ -230,7 +242,7 @@ class AstrosphericForecastCard extends LitElement {
   protected render() {
     if (!this._config || !this.hass) return nothing;
 
-    const cloudData = this._getForecastData(this._config.cloud_cover_entity);
+    const cloudData = this._getForecastData(this._entity(this._config.cloud_cover_entity, "cloud_cover"));
     const hours = cloudData.length || "\u2014";
 
     return html`

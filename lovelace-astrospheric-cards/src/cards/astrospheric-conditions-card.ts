@@ -50,6 +50,17 @@ class AstrosphericConditionsCard extends LitElement {
     return document.createElement("astrospheric-conditions-editor");
   }
 
+  private _findEntity(sensorType: string): string | undefined {
+    for (const [id, s] of Object.entries(this.hass.states)) {
+      if ((s.attributes as Record<string, unknown>).astrospheric_sensor_type === sensorType) return id;
+    }
+    return undefined;
+  }
+
+  private _entity(cfgKey: string | undefined, sensorType: string): string | undefined {
+    return (cfgKey && cfgKey.length > 0 ? cfgKey : undefined) ?? this._findEntity(sensorType);
+  }
+
   private _getState(entityId?: string): string | undefined {
     if (!entityId || !this.hass) return undefined;
     return this.hass.states[entityId]?.state;
@@ -83,13 +94,13 @@ class AstrosphericConditionsCard extends LitElement {
   protected render() {
     if (!this._config || !this.hass) return nothing;
 
-    const seeingVal = Number(this._getState(this._config.seeing_entity)) || 0;
-    const transVal = Number(this._getState(this._config.transparency_entity)) || 0;
-    const cloudVal = Number(this._getState(this._config.cloud_cover_entity)) || 0;
-    const tempState = this._getState(this._config.temperature_entity);
-    const dewState = this._getState(this._config.dew_point_entity);
-    const windState = this._getState(this._config.wind_speed_entity);
-    const windDir = this._getAttr(this._config.wind_direction_entity, "cardinal") as string || "";
+    const seeingVal = Number(this._getState(this._entity(this._config.seeing_entity, "seeing"))) || 0;
+    const transVal = Number(this._getState(this._entity(this._config.transparency_entity, "transparency"))) || 0;
+    const cloudVal = Number(this._getState(this._entity(this._config.cloud_cover_entity, "cloud_cover"))) || 0;
+    const tempState = this._getState(this._entity(this._config.temperature_entity, "temperature"));
+    const dewState = this._getState(this._entity(this._config.dew_point_entity, "dew_point"));
+    const windState = this._getState(this._entity(this._config.wind_speed_entity, "wind_speed"));
+    const windDir = this._getAttr(this._entity(this._config.wind_direction_entity, "wind_direction"), "cardinal") as string || "";
 
     const seeingLbl = SEEING_LABELS[Math.round(seeingVal)] || "Unknown";
     const transLbl = transparencyLabel(transVal);

@@ -34,6 +34,17 @@ class AstrosphericMoonCard extends LitElement {
     return document.createElement("astrospheric-moon-editor");
   }
 
+  private _findEntity(sensorType: string): string | undefined {
+    for (const [id, s] of Object.entries(this.hass.states)) {
+      if ((s.attributes as Record<string, unknown>).astrospheric_sensor_type === sensorType) return id;
+    }
+    return undefined;
+  }
+
+  private _entity(cfgKey: string | undefined, sensorType: string): string | undefined {
+    return (cfgKey && cfgKey.length > 0 ? cfgKey : undefined) ?? this._findEntity(sensorType);
+  }
+
   private _getState(entityId?: string): string | undefined {
     if (!entityId || !this.hass) return undefined;
     return this.hass.states[entityId]?.state;
@@ -47,11 +58,12 @@ class AstrosphericMoonCard extends LitElement {
   protected render() {
     if (!this._config || !this.hass) return nothing;
 
-    const phaseName = this._getState(this._config.moon_phase_entity) || "Unknown";
-    const phaseValue = Number(this._getAttr(this._config.moon_phase_entity, "phase_value")) || 0;
-    const illumination = Number(this._getState(this._config.moon_illumination_entity)) || 0;
-    const altitude = Number(this._getState(this._config.moon_altitude_entity)) || 0;
-    const azimuth = Number(this._getState(this._config.moon_azimuth_entity)) || 0;
+    const moonPhaseId = this._entity(this._config.moon_phase_entity, "moon_phase");
+    const phaseName = this._getState(moonPhaseId) || "Unknown";
+    const phaseValue = Number(this._getAttr(moonPhaseId, "phase_value")) || 0;
+    const illumination = Number(this._getState(this._entity(this._config.moon_illumination_entity, "moon_illumination"))) || 0;
+    const altitude = Number(this._getState(this._entity(this._config.moon_altitude_entity, "moon_altitude"))) || 0;
+    const azimuth = Number(this._getState(this._entity(this._config.moon_azimuth_entity, "moon_azimuth"))) || 0;
 
     const moonSVG = moonPhaseSVG(phaseValue, illumination, 150);
     const isBelowHorizon = altitude < 0;

@@ -47,6 +47,17 @@ class AstrosphericTonightCard extends LitElement {
     };
   }
 
+  private _findEntity(sensorType: string): string | undefined {
+    for (const [id, s] of Object.entries(this.hass.states)) {
+      if ((s.attributes as Record<string, unknown>).astrospheric_sensor_type === sensorType) return id;
+    }
+    return undefined;
+  }
+
+  private _entity(cfgKey: string | undefined, sensorType: string): string | undefined {
+    return (cfgKey && cfgKey.length > 0 ? cfgKey : undefined) ?? this._findEntity(sensorType);
+  }
+
   private _getState(entityId?: string): string | undefined {
     if (!entityId || !this.hass) return undefined;
     return this.hass.states[entityId]?.state;
@@ -58,9 +69,9 @@ class AstrosphericTonightCard extends LitElement {
   }
 
   private _computeVerdict(): Verdict {
-    const seeing = Number(this._getState(this._config.seeing_entity)) || 0;
-    const transparency = Number(this._getState(this._config.transparency_entity)) || 0;
-    const clouds = Number(this._getState(this._config.cloud_cover_entity)) || 0;
+    const seeing = Number(this._getState(this._entity(this._config.seeing_entity, "seeing"))) || 0;
+    const transparency = Number(this._getState(this._entity(this._config.transparency_entity, "transparency"))) || 0;
+    const clouds = Number(this._getState(this._entity(this._config.cloud_cover_entity, "cloud_cover"))) || 0;
 
     const seeingGoThresh = this._config.seeing_go_threshold ?? 4;
     const transGoThresh = this._config.transparency_go_threshold ?? 9;
@@ -74,7 +85,7 @@ class AstrosphericTonightCard extends LitElement {
   }
 
   private _findBestHour(): string | null {
-    const raw = this._getAttr(this._config.seeing_entity, "forecast");
+    const raw = this._getAttr(this._entity(this._config.seeing_entity, "seeing"), "forecast");
     const forecast = Array.isArray(raw) ? raw as Array<{ datetime: string; value: number }> : [];
     if (forecast.length === 0) return null;
 
@@ -112,9 +123,9 @@ class AstrosphericTonightCard extends LitElement {
 
     const verdict = this._computeVerdict();
     const info = VERDICTS[verdict];
-    const seeing = Number(this._getState(this._config.seeing_entity)) || 0;
-    const transparency = Number(this._getState(this._config.transparency_entity)) || 0;
-    const clouds = Number(this._getState(this._config.cloud_cover_entity)) || 0;
+    const seeing = Number(this._getState(this._entity(this._config.seeing_entity, "seeing"))) || 0;
+    const transparency = Number(this._getState(this._entity(this._config.transparency_entity, "transparency"))) || 0;
+    const clouds = Number(this._getState(this._entity(this._config.cloud_cover_entity, "cloud_cover"))) || 0;
     const bestHour = this._findBestHour();
 
     const seeingPct = (seeing / 5) * 100;

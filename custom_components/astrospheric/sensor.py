@@ -323,12 +323,13 @@ class AstrosphericForecastSensor(CoordinatorEntity[ForecastCoordinator], SensorE
         return self.coordinator.get_current_value(desc.forecast_key)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any] | None:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra attributes including the forecast array."""
         desc = self.entity_description
+        attrs: dict[str, Any] = {"astrospheric_sensor_type": desc.key}
         if desc.extra_attrs_fn is not None:
-            return desc.extra_attrs_fn(self.coordinator)
-        return None
+            attrs.update(desc.extra_attrs_fn(self.coordinator))
+        return attrs
 
 
 class AstrosphericSkySensor(CoordinatorEntity[SkyCoordinator], SensorEntity):
@@ -361,9 +362,10 @@ class AstrosphericSkySensor(CoordinatorEntity[SkyCoordinator], SensorEntity):
         return self.entity_description.value_fn(self.coordinator)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any] | None:
+    def extra_state_attributes(self) -> dict[str, Any]:
         """Return extra state attributes."""
         desc = self.entity_description
+        attrs: dict[str, Any] = {"astrospheric_sensor_type": desc.key}
         if desc.extra_attrs_fn is not None:
-            return desc.extra_attrs_fn(self.coordinator)
-        return None
+            attrs.update(desc.extra_attrs_fn(self.coordinator))
+        return attrs
