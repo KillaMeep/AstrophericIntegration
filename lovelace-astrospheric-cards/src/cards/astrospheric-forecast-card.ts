@@ -46,7 +46,8 @@ class AstrosphericForecastCard extends LitElement {
     if (!entityId || !this.hass) return [];
     const entity = this.hass.states[entityId];
     if (!entity) return [];
-    return (entity.attributes["forecast"] as ForecastPoint[]) || [];
+    const raw = entity.attributes["forecast"];
+    return Array.isArray(raw) ? raw as ForecastPoint[] : [];
   }
 
   protected firstUpdated(): void {

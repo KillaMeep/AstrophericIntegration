@@ -37,3 +37,4 @@ validate.ps1
 
 # Logs
 *.log
+test_api.py

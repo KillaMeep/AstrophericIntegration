@@ -98,7 +98,8 @@ class AstrosphericTonightCard extends LitElement {
   }
 
   private _findBestHour(): string | null {
-    const forecast = (this._getAttr(this._config.seeing_entity, "forecast") || []) as Array<{ datetime: string; value: number }>;
+    const raw = this._getAttr(this._config.seeing_entity, "forecast");
+    const forecast = Array.isArray(raw) ? raw as Array<{ datetime: string; value: number }> : [];
     if (forecast.length === 0) return null;
 
     // Find the best seeing hour that's in the future and after sunset (rough: after 20:00 local or before 06:00)

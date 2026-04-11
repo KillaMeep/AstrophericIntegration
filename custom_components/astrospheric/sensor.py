@@ -44,6 +44,28 @@ from .coordinator_forecast import ForecastCoordinator
 from .coordinator_sky import SkyCoordinator
 
 
+def _moon_val(c: SkyCoordinator, key: str, ndigits: int | None = None):
+    """Safely extract a moon field from the sky coordinator."""
+    moon = c.get_moon()
+    if not moon:
+        return None
+    val = moon.get(key)
+    if val is None:
+        return None
+    return round(val, ndigits) if ndigits is not None else val
+
+
+def _sun_val(c: SkyCoordinator, key: str, ndigits: int = 2):
+    """Safely extract a sun field from the sky coordinator."""
+    sun = c.get_sun()
+    if not sun:
+        return None
+    val = sun.get(key)
+    if val is None:
+        return None
+    return round(val, ndigits)
+
+
 @dataclass(frozen=True, kw_only=True)
 class AstrosphericForecastSensorDescription(SensorEntityDescription):
     """Describe an Astrospheric forecast sensor."""
@@ -162,11 +184,9 @@ SKY_SENSORS: tuple[AstrosphericSkySensorDescription, ...] = (
         key="moon_phase",
         translation_key="moon_phase",
         icon="mdi:moon-waning-crescent",
-        value_fn=lambda c: moon_phase_label(
-            c.get_moon().get("Phase", 0) if c.get_moon() else 0
-        ),
+        value_fn=lambda c: moon_phase_label(_moon_val(c, "Phase") or 0),
         extra_attrs_fn=lambda c: {
-            "phase_value": c.get_moon().get("Phase") if c.get_moon() else None,
+            "phase_value": _moon_val(c, "Phase"),
         },
     ),
     AstrosphericSkySensorDescription(
@@ -175,11 +195,7 @@ SKY_SENSORS: tuple[AstrosphericSkySensorDescription, ...] = (
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:moon-full",
-        value_fn=lambda c: (
-            round(c.get_moon().get("Illumination", 0), 1)
-            if c.get_moon()
-            else None
-        ),
+        value_fn=lambda c: _moon_val(c, "Illumination", 1),
     ),
     AstrosphericSkySensorDescription(
         key="moon_altitude",
@@ -187,11 +203,7 @@ SKY_SENSORS: tuple[AstrosphericSkySensorDescription, ...] = (
         native_unit_of_measurement=DEGREE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:moon-waxing-crescent",
-        value_fn=lambda c: (
-            round(c.get_moon().get("Altitude", 0), 2)
-            if c.get_moon()
-            else None
-        ),
+        value_fn=lambda c: _moon_val(c, "Altitude", 2),
     ),
     AstrosphericSkySensorDescription(
         key="moon_azimuth",
@@ -199,11 +211,7 @@ SKY_SENSORS: tuple[AstrosphericSkySensorDescription, ...] = (
         native_unit_of_measurement=DEGREE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:compass",
-        value_fn=lambda c: (
-            round(c.get_moon().get("Azimuth", 0), 2)
-            if c.get_moon()
-            else None
-        ),
+        value_fn=lambda c: _moon_val(c, "Azimuth", 2),
     ),
     AstrosphericSkySensorDescription(
         key="sun_altitude",
@@ -211,11 +219,7 @@ SKY_SENSORS: tuple[AstrosphericSkySensorDescription, ...] = (
         native_unit_of_measurement=DEGREE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:white-balance-sunny",
-        value_fn=lambda c: (
-            round(c.get_sun().get("Altitude", 0), 2)
-            if c.get_sun()
-            else None
-        ),
+        value_fn=lambda c: _sun_val(c, "Altitude", 2),
     ),
     AstrosphericSkySensorDescription(
         key="sun_azimuth",
@@ -223,11 +227,7 @@ SKY_SENSORS: tuple[AstrosphericSkySensorDescription, ...] = (
         native_unit_of_measurement=DEGREE,
         state_class=SensorStateClass.MEASUREMENT,
         icon="mdi:compass",
-        value_fn=lambda c: (
-            round(c.get_sun().get("Azimuth", 0), 2)
-            if c.get_sun()
-            else None
-        ),
+        value_fn=lambda c: _sun_val(c, "Azimuth", 2),
     ),
     AstrosphericSkySensorDescription(
         key="visible_planets",

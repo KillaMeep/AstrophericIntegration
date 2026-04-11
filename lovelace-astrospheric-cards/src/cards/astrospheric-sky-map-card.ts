@@ -151,9 +151,10 @@ class AstrosphericSkyMapCard extends LitElement {
     }
 
     // Draw Planets
-    const planets = (this._getAttr(this._config.visible_planets_entity, "planets") || []) as PlanetInfo[];
+    const rawPlanets = this._getAttr(this._config.visible_planets_entity, "planets");
+    const planets = Array.isArray(rawPlanets) ? rawPlanets as PlanetInfo[] : [];
     for (const planet of planets) {
-      if (planet.altitude <= 0) continue;
+      if (!planet || planet.altitude <= 0) continue;
       const [px, py] = altAzToXY(planet.altitude, planet.azimuth, radius);
       const color = PLANET_COLORS[planet.name] || ASTRO_COLORS.textPrimary;
       const r = magnitudeToRadius(planet.magnitude);
