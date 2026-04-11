@@ -190,30 +190,22 @@ class AstrosphericSkyMapCard extends LitElement {
   }
 
   static styles = css`
-    :host {
-      display: block;
-    }
+    :host { display: block; }
     ha-card {
-      background: var(--ha-card-background, #1A2040);
+      background: linear-gradient(145deg, rgba(26, 32, 64, 0.92) 0%, rgba(11, 16, 38, 0.97) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
       color: var(--primary-text-color, #E8E6E3);
-      padding: 16px;
-      border-radius: var(--ha-card-border-radius, 12px);
+      padding: 20px;
+      border-radius: var(--ha-card-border-radius, 16px);
+      overflow: hidden;
     }
-    .card-header {
-      padding-bottom: 8px;
-    }
-    .title {
-      font-size: 1.1em;
-      font-weight: 500;
-    }
-    .card-content {
-      display: flex;
-      justify-content: center;
-    }
-    canvas {
-      max-width: 100%;
-      height: auto;
-    }
+    .card-header { padding-bottom: 8px; }
+    .title { font-size: 1.1em; font-weight: 600; letter-spacing: 0.3px; }
+    .card-content { display: flex; justify-content: center; }
+    canvas { max-width: 100%; height: auto; }
   `;
 }
 

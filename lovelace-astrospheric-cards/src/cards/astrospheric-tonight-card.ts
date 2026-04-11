@@ -1,36 +1,20 @@
-import { LitElement, html, css, nothing } from "lit";
+import { LitElement, html, css, nothing, unsafeCSS } from "lit";
 import { property, state } from "lit/decorators.js";
 import type { HomeAssistant, TonightCardConfig } from "../types.js";
-import { ASTRO_COLORS } from "../utils/theme.js";
+import { ASTRO_COLORS, seeingColor, transparencyColor, cloudCoverColor } from "../utils/theme.js";
 
 type Verdict = "GO" | "MARGINAL" | "NO-GO";
 
 interface VerdictInfo {
   label: string;
   color: string;
-  bg: string;
   icon: string;
 }
 
 const VERDICTS: Record<Verdict, VerdictInfo> = {
-  GO: {
-    label: "GO",
-    color: ASTRO_COLORS.excellent,
-    bg: "rgba(0, 200, 83, 0.12)",
-    icon: "mdi:check-circle",
-  },
-  MARGINAL: {
-    label: "MARGINAL",
-    color: ASTRO_COLORS.average,
-    bg: "rgba(255, 214, 0, 0.12)",
-    icon: "mdi:alert-circle",
-  },
-  "NO-GO": {
-    label: "NO-GO",
-    color: ASTRO_COLORS.poor,
-    bg: "rgba(255, 23, 68, 0.12)",
-    icon: "mdi:close-circle",
-  },
+  GO: { label: "GO", color: ASTRO_COLORS.excellent, icon: "mdi:check-circle" },
+  MARGINAL: { label: "MARGINAL", color: ASTRO_COLORS.average, icon: "mdi:alert-circle" },
+  "NO-GO": { label: "NO-GO", color: ASTRO_COLORS.poor, icon: "mdi:close-circle" },
 };
 
 const SEEING_LABELS: Record<number, string> = {
@@ -46,7 +30,7 @@ class AstrosphericTonightCard extends LitElement {
   }
 
   getCardSize(): number {
-    return 3;
+    return 4;
   }
 
   static getStubConfig(): Record<string, unknown> {
@@ -84,16 +68,8 @@ class AstrosphericTonightCard extends LitElement {
     const seeingNogoThresh = this._config.seeing_nogo_threshold ?? 2;
     const cloudNogoThresh = this._config.cloud_nogo_threshold ?? 70;
 
-    // NO-GO check first
-    if (seeing <= seeingNogoThresh || clouds >= cloudNogoThresh) {
-      return "NO-GO";
-    }
-
-    // GO check
-    if (seeing >= seeingGoThresh && transparency <= transGoThresh && clouds <= cloudGoThresh) {
-      return "GO";
-    }
-
+    if (seeing <= seeingNogoThresh || clouds >= cloudNogoThresh) return "NO-GO";
+    if (seeing >= seeingGoThresh && transparency <= transGoThresh && clouds <= cloudGoThresh) return "GO";
     return "MARGINAL";
   }
 
@@ -102,7 +78,6 @@ class AstrosphericTonightCard extends LitElement {
     const forecast = Array.isArray(raw) ? raw as Array<{ datetime: string; value: number }> : [];
     if (forecast.length === 0) return null;
 
-    // Find the best seeing hour that's in the future and after sunset (rough: after 20:00 local or before 06:00)
     let bestVal = -1;
     let bestTime = "";
 
@@ -119,6 +94,19 @@ class AstrosphericTonightCard extends LitElement {
     return bestVal > 0 ? `${bestTime} (${SEEING_LABELS[bestVal] || bestVal})` : null;
   }
 
+  private _renderConditionBar(label: string, pct: number, color: string, valueText: string) {
+    const clampedPct = Math.max(2, Math.min(100, pct));
+    return html`
+      <div class="cond-bar">
+        <span class="cond-label">${label}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="width: ${clampedPct}%; background: linear-gradient(90deg, ${color}99, ${color})"></div>
+        </div>
+        <span class="cond-value" style="color: ${color}">${valueText}</span>
+      </div>
+    `;
+  }
+
   protected render() {
     if (!this._config || !this.hass) return nothing;
 
@@ -129,34 +117,32 @@ class AstrosphericTonightCard extends LitElement {
     const clouds = Number(this._getState(this._config.cloud_cover_entity)) || 0;
     const bestHour = this._findBestHour();
 
+    const seeingPct = (seeing / 5) * 100;
+    const transPct = Math.max(0, (1 - transparency / 27)) * 100;
+    const cloudPct = Math.max(0, (1 - clouds / 100)) * 100;
+
     return html`
       <ha-card>
-        <div class="card-header">
-          <span class="title">${this._config.title || "Tonight"}</span>
+        <div class="header">
+          <span class="title">${this._config.title || "Tonight's Outlook"}</span>
         </div>
-        <div class="card-content">
-          <div class="verdict-badge" style="background: ${info.bg}; color: ${info.color}; border: 2px solid ${info.color}">
-            <ha-icon icon="${info.icon}" style="--mdc-icon-size: 28px; color: ${info.color}"></ha-icon>
-            <span class="verdict-text">${info.label}</span>
+        <div class="content">
+          <div class="verdict-area">
+            <div class="verdict-ring"
+              style="border-color: ${info.color}; box-shadow: 0 0 24px ${info.color}40, inset 0 0 24px ${info.color}15; background: ${info.color}0A">
+              <ha-icon icon="${info.icon}" style="--mdc-icon-size: 30px; color: ${info.color}"></ha-icon>
+              <span class="verdict-label" style="color: ${info.color}">${info.label}</span>
+            </div>
           </div>
-          <div class="stats">
-            <div class="stat">
-              <span class="stat-label">Seeing</span>
-              <span class="stat-value">${SEEING_LABELS[Math.round(seeing)] || seeing}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">Transparency</span>
-              <span class="stat-value">${transparency}</span>
-            </div>
-            <div class="stat">
-              <span class="stat-label">Clouds</span>
-              <span class="stat-value">${clouds}%</span>
-            </div>
+          <div class="conditions">
+            ${this._renderConditionBar("Seeing", seeingPct, seeingColor(seeing), SEEING_LABELS[Math.round(seeing)] || `${seeing}`)}
+            ${this._renderConditionBar("Transparency", transPct, transparencyColor(transparency), `${transparency}`)}
+            ${this._renderConditionBar("Clouds", cloudPct, cloudCoverColor(clouds), `${clouds}%`)}
           </div>
           ${bestHour ? html`
-            <div class="best-hour">
-              <ha-icon icon="mdi:star" style="--mdc-icon-size: 16px; color: ${ASTRO_COLORS.sun}"></ha-icon>
-              <span>Best window: ${bestHour}</span>
+            <div class="best-window">
+              <ha-icon icon="mdi:star-four-points" style="--mdc-icon-size: 16px; color: ${ASTRO_COLORS.sun}"></ha-icon>
+              <span>Best window: <strong>${bestHour}</strong></span>
             </div>
           ` : nothing}
         </div>
@@ -165,73 +151,67 @@ class AstrosphericTonightCard extends LitElement {
   }
 
   static styles = css`
-    :host {
-      display: block;
-    }
+    :host { display: block; }
     ha-card {
-      background: var(--ha-card-background, #1A2040);
-      color: var(--primary-text-color, #E8E6E3);
-      padding: 16px;
-      border-radius: var(--ha-card-border-radius, 12px);
+      background: linear-gradient(145deg, rgba(26, 32, 64, 0.92) 0%, rgba(11, 16, 38, 0.97) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      color: ${unsafeCSS(ASTRO_COLORS.textPrimary)};
+      padding: 20px;
+      border-radius: var(--ha-card-border-radius, 16px);
+      overflow: hidden;
     }
-    .card-header {
-      padding-bottom: 12px;
+    .header { padding-bottom: 16px; }
+    .title { font-size: 1.1em; font-weight: 600; letter-spacing: 0.3px; }
+    .content {
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
     }
-    .title {
-      font-size: 1.1em;
-      font-weight: 500;
+    .verdict-area { padding: 8px 0; }
+    .verdict-ring {
+      width: 120px; height: 120px; border-radius: 50%;
+      border: 3px solid;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 4px;
+      animation: breathe 3s ease-in-out infinite;
     }
-    .card-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
     }
-    .verdict-badge {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 28px;
-      border-radius: 12px;
-      font-weight: 700;
+    .verdict-label {
+      font-size: 1.3em; font-weight: 800; letter-spacing: 2px;
     }
-    .verdict-text {
-      font-size: 1.6em;
-      letter-spacing: 2px;
+    .conditions {
+      width: 100%; display: flex; flex-direction: column; gap: 10px;
     }
-    .stats {
-      display: flex;
-      gap: 24px;
-      width: 100%;
-      justify-content: center;
+    .cond-bar {
+      display: grid; grid-template-columns: 100px 1fr 75px;
+      align-items: center; gap: 10px;
     }
-    .stat {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
+    .cond-label {
+      font-size: 0.78em; text-transform: uppercase; letter-spacing: 0.5px;
+      color: ${unsafeCSS(ASTRO_COLORS.textSecondary)};
     }
-    .stat-label {
-      font-size: 0.75em;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--secondary-text-color, #8B8FA3);
+    .bar-track {
+      height: 6px; background: rgba(255, 255, 255, 0.06);
+      border-radius: 3px; overflow: hidden;
     }
-    .stat-value {
-      font-size: 1em;
-      font-weight: 600;
+    .bar-fill {
+      height: 100%; border-radius: 3px;
+      transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .best-hour {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color, #8B8FA3);
-      padding-top: 8px;
-      border-top: 1px solid var(--divider-color, rgba(255,255,255,0.06));
-      width: 100%;
-      justify-content: center;
+    .cond-value {
+      font-size: 0.8em; font-weight: 600; text-align: right;
     }
+    .best-window {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.85em; color: ${unsafeCSS(ASTRO_COLORS.textSecondary)};
+      padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.06);
+      width: 100%; justify-content: center;
+    }
+    .best-window strong { color: ${unsafeCSS(ASTRO_COLORS.sun)}; }
   `;
 }
 

@@ -18,6 +18,9 @@ function transparencyLabel(val: number): string {
   return "Cloudy";
 }
 
+const GAUGE_R = 40;
+const GAUGE_CIRC = 2 * Math.PI * GAUGE_R;
+
 class AstrosphericConditionsCard extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @state() private _config!: ConditionsCardConfig;
@@ -57,6 +60,26 @@ class AstrosphericConditionsCard extends LitElement {
     return this.hass.states[entityId]?.attributes[attr];
   }
 
+  private _renderRingGauge(label: string, pct: number, textLabel: string, color: string) {
+    const clamped = Math.max(0, Math.min(1, pct));
+    const offset = GAUGE_CIRC * (1 - clamped);
+    return html`
+      <div class="ring-gauge">
+        <div class="ring-wrap">
+          <svg viewBox="0 0 100 100">
+            <circle class="track" cx="50" cy="50" r="${GAUGE_R}" />
+            <circle class="fill" cx="50" cy="50" r="${GAUGE_R}"
+              style="stroke: ${color}; stroke-dashoffset: ${offset}; filter: drop-shadow(0 0 6px ${color}60)" />
+          </svg>
+          <div class="ring-center">
+            <span class="ring-value" style="color: ${color}">${textLabel}</span>
+          </div>
+        </div>
+        <span class="ring-name">${label}</span>
+      </div>
+    `;
+  }
+
   protected render() {
     if (!this._config || !this.hass) return nothing;
 
@@ -68,35 +91,35 @@ class AstrosphericConditionsCard extends LitElement {
     const windState = this._getState(this._config.wind_speed_entity);
     const windDir = this._getAttr(this._config.wind_direction_entity, "cardinal") as string || "";
 
-    const seeingLabel = SEEING_LABELS[Math.round(seeingVal)] || "Unknown";
-    const transLabel = transparencyLabel(transVal);
+    const seeingLbl = SEEING_LABELS[Math.round(seeingVal)] || "Unknown";
+    const transLbl = transparencyLabel(transVal);
 
     return html`
       <ha-card>
-        <div class="card-header">
+        <div class="header">
           <span class="title">${this._config.title || "Sky Conditions"}</span>
         </div>
-        <div class="card-content">
+        <div class="content">
           <div class="gauges">
-            ${this._renderGauge("Seeing", seeingVal, 5, seeingLabel, seeingColor(seeingVal))}
-            ${this._renderGauge("Transparency", transVal, 27, transLabel, transparencyColor(transVal))}
-            ${this._renderGauge("Cloud Cover", cloudVal, 100, `${cloudVal}%`, cloudCoverColor(cloudVal))}
+            ${this._renderRingGauge("Seeing", seeingVal / 5, seeingLbl, seeingColor(seeingVal))}
+            ${this._renderRingGauge("Transparency", Math.max(0, 1 - transVal / 27), transLbl, transparencyColor(transVal))}
+            ${this._renderRingGauge("Cloud Cover", Math.max(0, 1 - cloudVal / 100), `${cloudVal}%`, cloudCoverColor(cloudVal))}
           </div>
-          <div class="compact-row">
+          <div class="weather-row">
             ${tempState !== undefined ? html`
-              <div class="compact-item">
+              <div class="weather-chip">
                 <ha-icon icon="mdi:thermometer"></ha-icon>
                 <span>${tempState}&deg;</span>
               </div>
             ` : nothing}
             ${dewState !== undefined ? html`
-              <div class="compact-item">
-                <ha-icon icon="mdi:thermometer-water"></ha-icon>
+              <div class="weather-chip">
+                <ha-icon icon="mdi:water-outline"></ha-icon>
                 <span>${dewState}&deg;</span>
               </div>
             ` : nothing}
             ${windState !== undefined ? html`
-              <div class="compact-item">
+              <div class="weather-chip">
                 <ha-icon icon="mdi:weather-windy"></ha-icon>
                 <span>${windState} ${windDir}</span>
               </div>
@@ -107,85 +130,62 @@ class AstrosphericConditionsCard extends LitElement {
     `;
   }
 
-  private _renderGauge(label: string, value: number, max: number, textLabel: string, color: string) {
-    const pct = Math.min(100, (value / max) * 100);
-    return html`
-      <div class="gauge">
-        <div class="gauge-label">${label}</div>
-        <div class="gauge-track">
-          <div class="gauge-fill" style="width: ${pct}%; background: ${color}"></div>
-        </div>
-        <div class="gauge-value" style="color: ${color}">${textLabel}</div>
-      </div>
-    `;
-  }
-
   static styles = css`
-    :host {
-      display: block;
-    }
+    :host { display: block; }
     ha-card {
-      background: var(--ha-card-background, ${unsafeCSS(ASTRO_COLORS.bgCard)});
-      color: var(--primary-text-color, ${unsafeCSS(ASTRO_COLORS.textPrimary)});
-      padding: 16px;
-      border-radius: var(--ha-card-border-radius, 12px);
-    }
-    .card-header {
-      padding-bottom: 12px;
-    }
-    .title {
-      font-size: 1.1em;
-      font-weight: 500;
-    }
-    .gauges {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .gauge {
-      display: grid;
-      grid-template-columns: 110px 1fr 90px;
-      align-items: center;
-      gap: 12px;
-    }
-    .gauge-label {
-      font-size: 0.9em;
-      color: var(--secondary-text-color, #8B8FA3);
-    }
-    .gauge-track {
-      height: 8px;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 4px;
+      background: linear-gradient(145deg, rgba(26, 32, 64, 0.92) 0%, rgba(11, 16, 38, 0.97) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      color: ${unsafeCSS(ASTRO_COLORS.textPrimary)};
+      padding: 20px;
+      border-radius: var(--ha-card-border-radius, 16px);
       overflow: hidden;
     }
-    .gauge-fill {
-      height: 100%;
-      border-radius: 4px;
-      transition: width 0.6s ease, background 0.6s ease;
+    .header { padding-bottom: 16px; }
+    .title { font-size: 1.1em; font-weight: 600; letter-spacing: 0.3px; }
+    .content { display: flex; flex-direction: column; gap: 20px; }
+    .gauges { display: flex; justify-content: space-around; }
+    .ring-gauge {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
     }
-    .gauge-value {
-      font-size: 0.85em;
-      font-weight: 600;
-      text-align: right;
+    .ring-wrap {
+      position: relative; width: 100px; height: 100px;
     }
-    .compact-row {
-      display: flex;
-      justify-content: space-around;
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid var(--divider-color, rgba(255,255,255,0.06));
+    .ring-wrap svg {
+      width: 100%; height: 100%; transform: rotate(-90deg);
     }
-    .compact-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.85em;
-      color: var(--secondary-text-color, #8B8FA3);
+    .track {
+      fill: none; stroke: rgba(255, 255, 255, 0.06); stroke-width: 7;
     }
-    .compact-item ha-icon {
-      --mdc-icon-size: 18px;
-      color: var(--secondary-text-color, #8B8FA3);
+    .fill {
+      fill: none; stroke-width: 7; stroke-linecap: round;
+      stroke-dasharray: ${unsafeCSS(GAUGE_CIRC.toFixed(1))};
+      transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.6s ease;
     }
+    .ring-center {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ring-value {
+      font-size: 0.82em; font-weight: 700; text-align: center; line-height: 1.2;
+    }
+    .ring-name {
+      font-size: 0.72em; text-transform: uppercase; letter-spacing: 0.6px;
+      color: ${unsafeCSS(ASTRO_COLORS.textSecondary)};
+    }
+    .weather-row {
+      display: flex; justify-content: center; gap: 10px;
+      padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .weather-chip {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 0.82em; color: ${unsafeCSS(ASTRO_COLORS.textSecondary)};
+      background: rgba(255, 255, 255, 0.04); padding: 5px 12px;
+      border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .weather-chip ha-icon { --mdc-icon-size: 16px; }
   `;
 }
 

@@ -1,22 +1,13 @@
-import { LitElement, html, css, nothing } from "lit";
+import { LitElement, html, css, nothing, unsafeCSS } from "lit";
 import { property, state } from "lit/decorators.js";
 import type { HomeAssistant, ForecastCardConfig, ForecastPoint } from "../types.js";
 import { ASTRO_COLORS } from "../utils/theme.js";
-
-// uPlot imported at runtime; declare minimal types
-declare class uPlot {
-  constructor(opts: unknown, data: unknown[][], target: HTMLElement);
-  destroy(): void;
-  setData(data: unknown[][]): void;
-  setSize(size: { width: number; height: number }): void;
-}
 
 class AstrosphericForecastCard extends LitElement {
   @property({ attribute: false }) hass!: HomeAssistant;
   @state() private _config!: ForecastCardConfig;
 
-  private _chart?: uPlot;
-  private _resizeObserver?: ResizeObserver;
+  private _resizeObs?: ResizeObserver;
 
   setConfig(config: ForecastCardConfig): void {
     this._config = config;
@@ -37,9 +28,7 @@ class AstrosphericForecastCard extends LitElement {
 
   disconnectedCallback(): void {
     super.disconnectedCallback();
-    this._chart?.destroy();
-    this._chart = undefined;
-    this._resizeObserver?.disconnect();
+    this._resizeObs?.disconnect();
   }
 
   private _getForecastData(entityId?: string): ForecastPoint[] {
@@ -51,197 +40,263 @@ class AstrosphericForecastCard extends LitElement {
   }
 
   protected firstUpdated(): void {
-    this._initChart();
+    const wrap = this.shadowRoot?.querySelector(".chart-wrap") as HTMLElement;
+    if (!wrap) return;
+    this._resizeObs = new ResizeObserver(() => this._drawChart());
+    this._resizeObs.observe(wrap);
+    this._drawChart();
   }
 
   protected updated(): void {
-    this._updateChart();
+    this._drawChart();
   }
 
-  private _initChart(): void {
-    const container = this.shadowRoot?.querySelector(".chart-container") as HTMLElement;
-    if (!container) return;
+  private _drawChart(): void {
+    const canvas = this.shadowRoot?.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas || !this._config) return;
 
-    // If uPlot is not loaded, fall back to a simple table display
-    if (typeof (window as any).uPlot === "undefined") {
-      this._renderFallback(container);
+    const wrap = canvas.parentElement!;
+    const dpr = window.devicePixelRatio || 1;
+    const w = wrap.clientWidth;
+    if (w === 0) return;
+    const h = 200;
+
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const cloudData = this._getForecastData(this._config.cloud_cover_entity);
+    const seeingData = this._getForecastData(this._config.seeing_entity);
+    const transData = this._getForecastData(this._config.transparency_entity);
+
+    const primary = cloudData.length > 0 ? cloudData : seeingData.length > 0 ? seeingData : transData;
+    if (primary.length === 0) {
+      ctx.fillStyle = ASTRO_COLORS.textMuted;
+      ctx.font = "13px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("No forecast data available", w / 2, h / 2);
       return;
     }
 
-    const cloudForecast = this._getForecastData(this._config.cloud_cover_entity);
-    if (cloudForecast.length === 0) return;
+    const pad = { top: 16, right: 12, bottom: 28, left: 38 };
+    const pW = w - pad.left - pad.right;
+    const pH = h - pad.top - pad.bottom;
 
-    const timestamps = cloudForecast.map((p) => new Date(p.datetime).getTime() / 1000);
-    const cloudData = cloudForecast.map((p) => p.value);
-    const seeingForecast = this._getForecastData(this._config.seeing_entity);
-    const seeingData = seeingForecast.map((p) => p.value);
-    const transForecast = this._getForecastData(this._config.transparency_entity);
-    const transData = transForecast.map((p) => p.value);
+    const times = primary.map(p => new Date(p.datetime).getTime());
+    const tMin = times[0];
+    const tMax = times[times.length - 1];
+    const tRange = tMax - tMin || 1;
 
-    const width = container.clientWidth || 400;
-    const height = 250;
+    const xOf = (t: number) => pad.left + ((t - tMin) / tRange) * pW;
+    const yOf = (v: number, max: number) => pad.top + pH - (Math.max(0, Math.min(max, v)) / max) * pH;
 
-    const nowSec = Date.now() / 1000;
-
-    const opts = {
-      width,
-      height,
-      cursor: { show: true },
-      scales: {
-        x: { time: true },
-        y: { auto: true },
-        y2: { auto: true, side: 1 },
-      },
-      axes: [
-        { stroke: ASTRO_COLORS.textSecondary, grid: { stroke: "rgba(255,255,255,0.05)" } },
-        { stroke: ASTRO_COLORS.textSecondary, grid: { stroke: "rgba(255,255,255,0.05)" }, label: "Cloud %" },
-        { stroke: ASTRO_COLORS.textSecondary, side: 1, grid: { show: false }, label: "Seeing" },
-      ],
-      series: [
-        {},
-        {
-          label: "Cloud Cover",
-          stroke: "#546E7A",
-          fill: "rgba(84, 110, 122, 0.15)",
-          width: 2,
-          scale: "y",
-        },
-        {
-          label: "Seeing",
-          stroke: ASTRO_COLORS.excellent,
-          width: 2,
-          scale: "y2",
-        },
-        {
-          label: "Transparency",
-          stroke: ASTRO_COLORS.average,
-          width: 2,
-          dash: [5, 3],
-          scale: "y",
-        },
-      ],
-      plugins: [
-        // Now-line plugin
-        {
-          hooks: {
-            draw: [
-              (u: any) => {
-                const ctx = u.ctx as CanvasRenderingContext2D;
-                const left = u.valToPos(nowSec, "x", true);
-                if (left > u.bbox.left && left < u.bbox.left + u.bbox.width) {
-                  ctx.save();
-                  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
-                  ctx.lineWidth = 1;
-                  ctx.setLineDash([4, 4]);
-                  ctx.beginPath();
-                  ctx.moveTo(left, u.bbox.top);
-                  ctx.lineTo(left, u.bbox.top + u.bbox.height);
-                  ctx.stroke();
-                  ctx.restore();
-                }
-              },
-            ],
-          },
-        },
-      ],
-    };
-
-    const data = [timestamps, cloudData, seeingData, transData];
-
-    this._chart = new (window as any).uPlot(opts, data, container);
-
-    // Handle resize
-    this._resizeObserver = new ResizeObserver(() => {
-      if (this._chart && container.clientWidth > 0) {
-        this._chart.setSize({ width: container.clientWidth, height });
+    // Nighttime shading
+    for (let i = 0; i < times.length - 1; i++) {
+      const dt = new Date(times[i]);
+      const hr = dt.getHours();
+      if (hr >= 20 || hr < 6) {
+        const x1 = xOf(times[i]);
+        const x2 = xOf(times[i + 1]);
+        ctx.fillStyle = "rgba(0, 200, 83, 0.02)";
+        ctx.fillRect(x1, pad.top, x2 - x1, pH);
       }
-    });
-    this._resizeObserver.observe(container);
-  }
-
-  private _updateChart(): void {
-    if (!this._chart || !this._config) return;
-
-    const cloudForecast = this._getForecastData(this._config.cloud_cover_entity);
-    if (cloudForecast.length === 0) return;
-
-    const timestamps = cloudForecast.map((p) => new Date(p.datetime).getTime() / 1000);
-    const cloudData = cloudForecast.map((p) => p.value);
-    const seeingData = this._getForecastData(this._config.seeing_entity).map((p) => p.value);
-    const transData = this._getForecastData(this._config.transparency_entity).map((p) => p.value);
-
-    this._chart.setData([timestamps, cloudData, seeingData, transData]);
-  }
-
-  private _renderFallback(container: HTMLElement): void {
-    // Simple text-based fallback if uPlot not loaded
-    const cloudForecast = this._getForecastData(this._config.cloud_cover_entity);
-    if (cloudForecast.length === 0) {
-      container.innerHTML = '<div style="padding: 20px; text-align: center; color: #8B8FA3;">No forecast data available</div>';
-      return;
     }
 
-    // Render as simple bar visualization using CSS
-    let barHtml = '<div style="display: flex; gap: 1px; height: 80px; align-items: flex-end;">';
-    for (const point of cloudForecast) {
-      const h = Math.max(2, (point.value / 100) * 80);
-      const color = point.value < 30 ? ASTRO_COLORS.excellent : point.value < 60 ? ASTRO_COLORS.average : ASTRO_COLORS.poor;
-      barHtml += `<div style="flex: 1; height: ${h}px; background: ${color}; border-radius: 1px 1px 0 0;" title="${point.datetime}: ${point.value}%"></div>`;
+    // Grid lines
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const y = pad.top + (pH / 4) * i;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(w - pad.right, y);
+      ctx.stroke();
     }
-    barHtml += "</div>";
-    barHtml += '<div style="display: flex; justify-content: space-between; font-size: 10px; color: #8B8FA3; margin-top: 4px;">';
-    barHtml += `<span>Now</span><span>+${cloudForecast.length}h</span>`;
-    barHtml += "</div>";
-    container.innerHTML = barHtml;
+
+    // Cloud cover area + line
+    if (cloudData.length > 1) {
+      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + pH);
+      grad.addColorStop(0, "rgba(84, 110, 122, 0.35)");
+      grad.addColorStop(1, "rgba(84, 110, 122, 0.03)");
+
+      ctx.beginPath();
+      ctx.moveTo(xOf(new Date(cloudData[0].datetime).getTime()), pad.top + pH);
+      for (const p of cloudData) {
+        ctx.lineTo(xOf(new Date(p.datetime).getTime()), yOf(p.value, 100));
+      }
+      ctx.lineTo(xOf(new Date(cloudData[cloudData.length - 1].datetime).getTime()), pad.top + pH);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      ctx.beginPath();
+      for (let i = 0; i < cloudData.length; i++) {
+        const x = xOf(new Date(cloudData[i].datetime).getTime());
+        const y = yOf(cloudData[i].value, 100);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = "#78909C";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Seeing area + line
+    if (seeingData.length > 1) {
+      const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + pH);
+      grad.addColorStop(0, "rgba(0, 200, 83, 0.18)");
+      grad.addColorStop(1, "rgba(0, 200, 83, 0.02)");
+
+      ctx.beginPath();
+      ctx.moveTo(xOf(new Date(seeingData[0].datetime).getTime()), pad.top + pH);
+      for (const p of seeingData) {
+        ctx.lineTo(xOf(new Date(p.datetime).getTime()), yOf((p.value / 5) * 100, 100));
+      }
+      ctx.lineTo(xOf(new Date(seeingData[seeingData.length - 1].datetime).getTime()), pad.top + pH);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      ctx.beginPath();
+      for (let i = 0; i < seeingData.length; i++) {
+        const x = xOf(new Date(seeingData[i].datetime).getTime());
+        const y = yOf((seeingData[i].value / 5) * 100, 100);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = ASTRO_COLORS.excellent;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Transparency line (dashed, inverted)
+    if (transData.length > 1) {
+      ctx.beginPath();
+      ctx.setLineDash([5, 3]);
+      for (let i = 0; i < transData.length; i++) {
+        const x = xOf(new Date(transData[i].datetime).getTime());
+        const y = yOf(Math.max(0, 1 - transData[i].value / 27) * 100, 100);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = ASTRO_COLORS.average;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Now indicator
+    const now = Date.now();
+    if (now >= tMin && now <= tMax) {
+      const nx = xOf(now);
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(nx, pad.top);
+      ctx.lineTo(nx, pad.top + pH);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+      ctx.font = "9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Now", nx, pad.top - 4);
+    }
+
+    // Time labels
+    ctx.fillStyle = ASTRO_COLORS.textMuted;
+    ctx.font = "10px sans-serif";
+    ctx.textAlign = "center";
+    const step = Math.max(1, Math.floor(times.length / 7));
+    for (let i = 0; i < times.length; i += step) {
+      const dt = new Date(times[i]);
+      const lbl = dt.toLocaleDateString(undefined, { weekday: "short" }) + " " +
+        dt.toLocaleTimeString(undefined, { hour: "numeric" });
+      ctx.fillText(lbl, xOf(times[i]), h - 6);
+    }
+
+    // Y-axis labels
+    ctx.textAlign = "right";
+    ctx.font = "9px sans-serif";
+    for (let pct = 0; pct <= 100; pct += 25) {
+      ctx.fillText(`${pct}`, pad.left - 6, yOf(pct, 100) + 3);
+    }
   }
 
   protected render() {
     if (!this._config || !this.hass) return nothing;
 
+    const cloudData = this._getForecastData(this._config.cloud_cover_entity);
+    const hours = cloudData.length || "\u2014";
+
     return html`
       <ha-card>
-        <div class="card-header">
+        <div class="header">
           <span class="title">${this._config.title || "Forecast"}</span>
-          <span class="subtitle">81-hour outlook</span>
+          <span class="subtitle">${hours}-hour outlook</span>
         </div>
-        <div class="card-content">
-          <div class="chart-container"></div>
+        <div class="chart-wrap">
+          <canvas></canvas>
+        </div>
+        <div class="legend">
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: #78909C"></span>
+            <span>Clouds</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch" style="background: ${ASTRO_COLORS.excellent}"></span>
+            <span>Seeing</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-swatch dashed" style="border-color: ${ASTRO_COLORS.average}"></span>
+            <span>Transparency</span>
+          </div>
         </div>
       </ha-card>
     `;
   }
 
   static styles = css`
-    :host {
-      display: block;
-    }
+    :host { display: block; }
     ha-card {
-      background: var(--ha-card-background, #1A2040);
-      color: var(--primary-text-color, #E8E6E3);
-      padding: 16px;
-      border-radius: var(--ha-card-border-radius, 12px);
+      background: linear-gradient(145deg, rgba(26, 32, 64, 0.92) 0%, rgba(11, 16, 38, 0.97) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      color: ${unsafeCSS(ASTRO_COLORS.textPrimary)};
+      padding: 20px;
+      border-radius: var(--ha-card-border-radius, 16px);
+      overflow: hidden;
     }
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
+    .header {
+      display: flex; justify-content: space-between; align-items: baseline;
       padding-bottom: 12px;
     }
-    .title {
-      font-size: 1.1em;
-      font-weight: 500;
+    .title { font-size: 1.1em; font-weight: 600; letter-spacing: 0.3px; }
+    .subtitle { font-size: 0.8em; color: ${unsafeCSS(ASTRO_COLORS.textSecondary)}; }
+    .chart-wrap { width: 100%; }
+    canvas { width: 100%; display: block; border-radius: 8px; }
+    .legend {
+      display: flex; justify-content: center; gap: 16px;
+      padding-top: 12px; margin-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
     }
-    .subtitle {
-      font-size: 0.8em;
-      color: var(--secondary-text-color, #8B8FA3);
+    .legend-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.75em; color: ${unsafeCSS(ASTRO_COLORS.textSecondary)};
     }
-    .chart-container {
-      width: 100%;
-      min-height: 80px;
+    .legend-swatch {
+      width: 14px; height: 3px; border-radius: 2px;
     }
-    /* uPlot theme overrides */
-    .chart-container :global(.u-wrap) {
-      background: transparent !important;
+    .legend-swatch.dashed {
+      background: none; height: 0;
+      border-top: 2px dashed;
+      width: 14px;
     }
   `;
 }
