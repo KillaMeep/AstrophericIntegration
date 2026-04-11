@@ -155,6 +155,8 @@ class AstrosphericForecastCard extends LitElement {
       }
       ctx.strokeStyle = "#78909C";
       ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
       ctx.stroke();
     }
 
@@ -182,6 +184,8 @@ class AstrosphericForecastCard extends LitElement {
       }
       ctx.strokeStyle = ASTRO_COLORS.excellent;
       ctx.lineWidth = 2;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
       ctx.stroke();
     }
 
@@ -196,6 +200,7 @@ class AstrosphericForecastCard extends LitElement {
       }
       ctx.strokeStyle = ASTRO_COLORS.average;
       ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
       ctx.stroke();
       ctx.setLineDash([]);
     }
@@ -223,11 +228,22 @@ class AstrosphericForecastCard extends LitElement {
     ctx.fillStyle = ASTRO_COLORS.textMuted;
     ctx.font = "10px sans-serif";
     ctx.textAlign = "center";
-    const step = Math.max(1, Math.floor(times.length / 7));
-    for (let i = 0; i < times.length; i += step) {
+    const minSpacingPx = 68;
+    const labelIndices: number[] = [];
+    let lastX = -Infinity;
+    for (let i = 0; i < times.length; i++) {
+      const x = xOf(times[i]);
+      if (x - lastX >= minSpacingPx) {
+        labelIndices.push(i);
+        lastX = x;
+      }
+    }
+    for (const i of labelIndices) {
       const dt = new Date(times[i]);
-      const lbl = dt.toLocaleDateString(undefined, { weekday: "short" }) + " " +
-        dt.toLocaleTimeString(undefined, { hour: "numeric" });
+      const hr = dt.getHours();
+      const ampm = hr < 12 ? "AM" : "PM";
+      const hr12 = hr % 12 || 12;
+      const lbl = dt.toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" }) + ` ${hr12}${ampm}`;
       ctx.fillText(lbl, xOf(times[i]), h - 6);
     }
 

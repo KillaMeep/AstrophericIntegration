@@ -147,8 +147,8 @@ class AstrosphericTonightCard extends LitElement {
           </div>
           <div class="conditions">
             ${this._renderConditionBar("Seeing", seeingPct, seeingColor(seeing), SEEING_LABELS[Math.round(seeing)] || `${seeing}`)}
-            ${this._renderConditionBar("Transparency", transPct, transparencyColor(transparency), `${transparency}`)}
-            ${this._renderConditionBar("Clouds", cloudPct, cloudCoverColor(clouds), `${clouds}%`)}
+            ${this._renderConditionBar("Transparency", transPct, transparencyColor(transparency), `${parseFloat(transparency.toFixed(1))}`)}
+            ${this._renderConditionBar("Clouds", cloudPct, cloudCoverColor(clouds), `${Math.round(clouds)}%`)}
           </div>
           ${bestHour ? html`
             <div class="best-window">
@@ -185,11 +185,6 @@ class AstrosphericTonightCard extends LitElement {
       border: 3px solid;
       display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 4px;
-      animation: breathe 3s ease-in-out infinite;
-    }
-    @keyframes breathe {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.04); }
     }
     .verdict-label {
       font-size: 1.3em; font-weight: 800; letter-spacing: 2px;

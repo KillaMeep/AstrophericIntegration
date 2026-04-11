@@ -114,25 +114,25 @@ class AstrosphericConditionsCard extends LitElement {
           <div class="gauges">
             ${this._renderRingGauge("Seeing", seeingVal / 5, seeingLbl, seeingColor(seeingVal))}
             ${this._renderRingGauge("Transparency", Math.max(0, 1 - transVal / 27), transLbl, transparencyColor(transVal))}
-            ${this._renderRingGauge("Cloud Cover", Math.max(0, 1 - cloudVal / 100), `${cloudVal}%`, cloudCoverColor(cloudVal))}
+            ${this._renderRingGauge("Cloud Cover", Math.max(0, 1 - cloudVal / 100), `${Math.round(cloudVal)}%`, cloudCoverColor(cloudVal))}
           </div>
           <div class="weather-row">
             ${tempState !== undefined ? html`
               <div class="weather-chip">
                 <ha-icon icon="mdi:thermometer"></ha-icon>
-                <span>${tempState}&deg;</span>
+                <span>${parseFloat(Number(tempState).toFixed(1))}&deg;</span>
               </div>
             ` : nothing}
             ${dewState !== undefined ? html`
               <div class="weather-chip">
                 <ha-icon icon="mdi:water-outline"></ha-icon>
-                <span>${dewState}&deg;</span>
+                <span>${parseFloat(Number(dewState).toFixed(1))}&deg;</span>
               </div>
             ` : nothing}
             ${windState !== undefined ? html`
               <div class="weather-chip">
                 <ha-icon icon="mdi:weather-windy"></ha-icon>
-                <span>${windState} ${windDir}</span>
+                <span>${parseFloat(Number(windState).toFixed(1))} ${windDir}</span>
               </div>
             ` : nothing}
           </div>
