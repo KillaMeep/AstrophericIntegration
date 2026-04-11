@@ -142,19 +142,34 @@ class ForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return None
 
     def get_current_value(self, key: str) -> Any | None:
-        """Get the current hour's value for a given forecast key."""
+        """Get the current hour's value for a given forecast key.
+
+        Forecast array elements are dicts of the form
+        ``{'Value': {'ActualValue': <num>, 'ValueColor': '#...'}, 'HourOffset': <int>}``.
+        This method returns the bare ``ActualValue`` so sensors receive a
+        numeric state rather than a dict.
+        """
         idx = self.get_current_hour_index()
         if idx is None or not self.data:
             return None
         array = self.data.get(key)
-        if array and isinstance(array, list) and idx < len(array):
-            return array[idx]
-        return None
+        if not array or not isinstance(array, list) or idx >= len(array):
+            return None
+        item = array[idx]
+        if isinstance(item, dict):
+            value_obj = item.get("Value")
+            if isinstance(value_obj, dict):
+                return value_obj.get("ActualValue")
+            # Flat dict or unexpected shape — return as-is and let caller handle it
+            return item
+        return item
 
     def get_forecast_array(self, key: str) -> list[dict[str, Any]]:
         """Return the full forecast array as [{datetime, value}, ...] dicts.
 
-        Useful for chart attributes in sensors.
+        Useful for chart attributes in sensors.  ``value`` is the bare numeric
+        ``ActualValue`` extracted from the API's nested Value object so that
+        the Lovelace cards receive plain numbers.
         """
         if not self.data:
             return []
@@ -166,10 +181,15 @@ class ForecastCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             start_dt = datetime.fromisoformat(utc_start.replace("Z", "+00:00"))
         except (ValueError, TypeError):
             return []
-        return [
-            {
+        result = []
+        for i, val in enumerate(array):
+            if isinstance(val, dict):
+                value_obj = val.get("Value")
+                numeric = value_obj.get("ActualValue") if isinstance(value_obj, dict) else val
+            else:
+                numeric = val
+            result.append({
                 "datetime": (start_dt + timedelta(hours=i)).isoformat(),
-                "value": val,
-            }
-            for i, val in enumerate(array)
-        ]
+                "value": numeric,
+            })
+        return result
