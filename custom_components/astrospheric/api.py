@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from typing import Any
 
 import aiohttp
@@ -104,7 +105,18 @@ class AstrosphericApiClient:
                     endpoint, json=payload
                 ) as resp:
                     if resp.status == 200:
-                        return await resp.json(content_type=None)
+                        body = await resp.text()
+                        try:
+                            return json.loads(body)
+                        except (json.JSONDecodeError, ValueError) as err:
+                            LOGGER.error(
+                                "API returned 200 but body is not valid JSON "
+                                "(first 200 chars): %s",
+                                body[:200],
+                            )
+                            raise AstrosphericApiError(
+                                f"API returned invalid JSON: {err}"
+                            ) from err
 
                     body = await resp.text()
 
