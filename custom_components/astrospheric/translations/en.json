@@ -16,6 +16,20 @@
           "longitude": "Longitude of your observing location",
           "sky_poll_interval": "How often to poll celestial positions (5-60 minutes, default 30)"
         }
+      },
+      "reconfigure": {
+        "title": "Reconfigure Astrospheric",
+        "description": "Update your API key or location.",
+        "data": {
+          "api_key": "API Key",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        },
+        "data_description": {
+          "api_key": "Your Astrospheric Professional API key",
+          "latitude": "Latitude of your observing location",
+          "longitude": "Longitude of your observing location"
+        }
       }
     },
     "error": {

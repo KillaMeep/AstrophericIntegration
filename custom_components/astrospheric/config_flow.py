@@ -119,6 +119,44 @@ class AstrosphericConfigFlow(ConfigFlow, domain=DOMAIN):
         """Return the options flow handler."""
         return AstrosphericOptionsFlow()
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Allow the user to update API key and location."""
+        errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
+
+        if user_input is not None:
+            error = await self._validate_input(user_input)
+            if error is None:
+                return self.async_update_reload_and_abort(
+                    entry,
+                    data={
+                        CONF_API_KEY: user_input[CONF_API_KEY],
+                        CONF_LATITUDE: user_input[CONF_LATITUDE],
+                        CONF_LONGITUDE: user_input[CONF_LONGITUDE],
+                    },
+                )
+            errors["base"] = error
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_API_KEY, default=entry.data.get(CONF_API_KEY, "")
+                    ): str,
+                    vol.Required(
+                        CONF_LATITUDE, default=entry.data.get(CONF_LATITUDE)
+                    ): vol.Coerce(float),
+                    vol.Required(
+                        CONF_LONGITUDE, default=entry.data.get(CONF_LONGITUDE)
+                    ): vol.Coerce(float),
+                }
+            ),
+            errors=errors,
+        )
+
 
 class AstrosphericOptionsFlow(OptionsFlow):
     """Handle Astrospheric options (reconfiguration)."""
