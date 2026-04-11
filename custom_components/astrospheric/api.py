@@ -104,7 +104,7 @@ class AstrosphericApiClient:
                     endpoint, json=payload
                 ) as resp:
                     if resp.status == 200:
-                        return await resp.json()
+                        return await resp.json(content_type=None)
 
                     body = await resp.text()
 
