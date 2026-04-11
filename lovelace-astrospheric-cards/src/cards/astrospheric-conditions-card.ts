@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing } from "lit";
+import { LitElement, html, css, nothing, unsafeCSS } from "lit";
 import { property, state } from "lit/decorators.js";
 import type { HomeAssistant, ConditionsCardConfig } from "../types.js";
 import { ASTRO_COLORS, seeingColor, transparencyColor, cloudCoverColor } from "../utils/theme.js";
@@ -125,8 +125,8 @@ class AstrosphericConditionsCard extends LitElement {
       display: block;
     }
     ha-card {
-      background: var(--ha-card-background, ${css`${ASTRO_COLORS.bgCard}`});
-      color: var(--primary-text-color, ${css`${ASTRO_COLORS.textPrimary}`});
+      background: var(--ha-card-background, ${unsafeCSS(ASTRO_COLORS.bgCard)});
+      color: var(--primary-text-color, ${unsafeCSS(ASTRO_COLORS.textPrimary)});
       padding: 16px;
       border-radius: var(--ha-card-border-radius, 12px);
     }
