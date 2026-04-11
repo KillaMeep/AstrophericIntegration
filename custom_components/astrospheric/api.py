@@ -106,6 +106,7 @@ class AstrosphericApiClient:
                 ) as resp:
                     if resp.status == 200:
                         body = await resp.text()
+                        body = body.lstrip("\ufeff")
                         try:
                             return json.loads(body)
                         except (json.JSONDecodeError, ValueError) as err:
